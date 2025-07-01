@@ -3,11 +3,30 @@ set -euo pipefail
 # ----------------------------------
 # Configurable Variables
 # ----------------------------------
-CASSANDRA_PASSWORD="Admin123"
+CASSANDRA_PASSWORD="{password}"
 LISTEN_ADDRESS=$(hostname -I | awk '{print $1}')
 CASSANDRA_VERSION="41x"
 YAML_FILE="/etc/cassandra/cassandra.yaml"
 SEEDS="$LISTEN_ADDRESS"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --admin-pass)
+      CASSANDRA_PASSWORD="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+  esac
+done
+
+# --- Prompt for password if not provided ---
+if [[ -z "$CASSANDRA_PASSWORD" ]]; then
+  read -srp "🔑 Admin password: " CASSANDRA_PASSWORD
+  echo
+fi
 # ----------------------------------
 # Functions
 # ----------------------------------
@@ -142,7 +161,7 @@ sudo sed -i "s/^authenticator:.*/authenticator: AllowAllAuthenticator/" "$YAML_F
 sudo sed -i "s/^authorizer:.*/authorizer: AllowAllAuthorizer/" "$YAML_FILE"
 
 restart_cassandra
-wait_for_port_9042
+wait_for_port_9042  
 
 # Step 2: Switch to PasswordAuthenticator
 configure_password_authentication
