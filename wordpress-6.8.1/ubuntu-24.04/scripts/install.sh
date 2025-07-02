@@ -14,7 +14,7 @@ DB_PASSWORD="{{db_password}}"
 DB_HOST="{{db_host}}" # Leave empty if not using an external database
 DB_PORT="{{db_port}}" # Leave empty if not using an external database
 # ===========================================
-
+# Parse arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --db-database)
@@ -63,7 +63,7 @@ if [[ -z "$DB_PASSWORD" ]]; then
   echo
 fi
 
-# Solo pedir DB_HOST y DB_PORT si DATABASE es external
+# Only prompt DB_HOST and DB_PORT if external
 if [[ "$DATABASE" == "external" ]]; then
   if [[ -z "$DB_HOST" ]]; then
     read -rp "Database host [localhost]: " DB_HOST
@@ -94,7 +94,7 @@ fi
 
 # Update packages
 echo "Updating the system..."
-sudo apt update && apt upgrade -y
+sudo apt update && sudo apt upgrade -y
 
 # Install Apache, PHP, and dependencies
 echo "Installing Apache, PHP, and dependencies..."
@@ -108,10 +108,10 @@ if [ "$DATABASE" == "internal" ]; then
   sudo systemctl start mysql
 
   echo "Creating database and user..."
-  mysql -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME} DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-  mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';"
-  mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';"
-  mysql -e "FLUSH PRIVILEGES;"
+  sudo mysql -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME} DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+  sudo mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';"
+  sudo mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';"
+  sudo mysql -e "FLUSH PRIVILEGES;"
 
   DB_HOST="localhost"
   DB_PORT=""
@@ -143,9 +143,9 @@ sudo mkdir -p ${WP_DIR}
 sudo cp -r wordpress/* ${WP_DIR}
 
 # Set permissions
-chown -R www-data:www-data ${WP_DIR}
-find ${WP_DIR} -type d -exec chmod 755 {} \;
-find ${WP_DIR} -type f -exec chmod 644 {} \;
+sudo chown -R www-data:www-data ${WP_DIR}
+sudo find ${WP_DIR} -type d -exec chmod 755 {} \;
+sudo find ${WP_DIR} -type f -exec chmod 644 {} \;
 
 # wp-config.php
 echo "Configuring wp-config.php..."
@@ -166,7 +166,7 @@ sudo sed -i "/AUTH_SALT/d" ${WP_DIR}/wp-config.php
 sudo sed -i "/SECURE_AUTH_SALT/d" ${WP_DIR}/wp-config.php
 sudo sed -i "/LOGGED_IN_SALT/d" ${WP_DIR}/wp-config.php
 sudo sed -i "/NONCE_SALT/d" ${WP_DIR}/wp-config.php
-echo "$SALT" >> ${WP_DIR}/wp-config.php
+echo "$SALT" | sudo tee -a ${WP_DIR}/wp-config.php >/dev/null
 
 # Enable ports in UFW
 echo "Enabling ports in the firewall..."
