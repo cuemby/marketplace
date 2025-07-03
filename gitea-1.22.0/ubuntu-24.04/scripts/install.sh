@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 #
 # Gitea 1.22.0 Installer on Ubuntu 24.04
 # Installation only, no preconfigured setup.
