@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ========================
-# CONFIGURACIÓN INICIAL
+# INITIAL CONFIGURATION
 # ========================
 VAULT_VERSION="latest"
 VAULT_USER="vault"
@@ -18,19 +18,19 @@ error() {
   exit 1
 }
 
-trap 'error "Algo salió mal. Abortando."' ERR
+trap 'error "Something went wrong. Aborting."' ERR
 
 # ========================
-# DEPENDENCIAS
+# DEPENDENCIES
 # ========================
-log "📦 Instalando dependencias necesarias..."
+log "📦 Installing required dependencies..."
 apt-get update
 apt-get install -y curl gpg apt-transport-https software-properties-common unzip
 
 # ========================
-# REPOSITORIO HASHICORP
+# HASHICORP REPOSITORY
 # ========================
-log "🔐 Agregando repositorio de HashiCorp..."
+log "🔐 Adding HashiCorp repository..."
 curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor > /usr/share/keyrings/hashicorp-archive-keyring.gpg
 
 echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" > /etc/apt/sources.list.d/hashicorp.list
@@ -38,15 +38,15 @@ echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://
 apt-get update
 
 # ========================
-# INSTALAR VAULT
+# INSTALL VAULT
 # ========================
-log "⬇️ Instalando Vault..."
+log "⬇️ Installing Vault..."
 apt-get install -y vault=$VAULT_VERSION || apt-get install -y vault
 
 # ========================
-# CREAR USUARIO Y DIRECTORIOS
+# CREATE USER AND DIRECTORIES
 # ========================
-log "👤 Creando usuario y directorios de Vault..."
+log "👤 Creating Vault user and directories..."
 id -u $VAULT_USER &>/dev/null || useradd --system --home $VAULT_DATA_DIR --shell /bin/false $VAULT_USER
 
 mkdir -p "$VAULT_DATA_DIR"
@@ -56,9 +56,9 @@ chown -R $VAULT_USER:$VAULT_GROUP "$VAULT_CONFIG_DIR"
 chmod 750 "$VAULT_DATA_DIR"
 
 # ========================
-# CONFIGURACIÓN DE VAULT
+# VAULT CONFIGURATION
 # ========================
-log "⚙️ Creando archivo de configuración predeterminado..."
+log "⚙️ Creating default configuration file..."
 cat > "$VAULT_CONFIG_DIR/vault.hcl" <<EOF
 storage "file" {
   path = "$VAULT_DATA_DIR"
@@ -78,7 +78,7 @@ chmod 640 "$VAULT_CONFIG_DIR/vault.hcl"
 # ========================
 # SYSTEMD SERVICE
 # ========================
-log "🛠 Configurando servicio systemd..."
+log "🛠 Configuring systemd service..."
 cat > /etc/systemd/system/vault.service <<EOF
 [Unit]
 Description=HashiCorp Vault - A tool for managing secrets
@@ -100,23 +100,23 @@ WantedBy=multi-user.target
 EOF
 
 # ========================
-# HABILITAR Y ARRANCAR
+# ENABLE AND START
 # ========================
-log "🔄 Recargando systemd..."
+log "🔄 Reloading systemd..."
 systemctl daemon-reload
 
-log "🚀 Habilitando Vault al iniciar..."
+log "🚀 Enabling Vault on startup..."
 systemctl enable vault
 
-log "▶️ Iniciando Vault..."
+log "▶️ Starting Vault..."
 systemctl start vault
 
 # ========================
-# EXPORTAR VAULT_ADDR
+# EXPORT VAULT_ADDR
 # ========================
 echo 'export VAULT_ADDR="http://127.0.0.1:8200"' >> /etc/profile.d/vault.sh
 chmod +x /etc/profile.d/vault.sh
 
-log "✅ Vault instalado y configurado correctamente."
-log "🌐 Puedes verificar con: systemctl status vault"
-log "💡 Para inicializar Vault, ejecuta: vault operator init"
+log "✅ Vault has been installed and configured successfully."
+log "🌐 You can check the status with: systemctl status vault"
+log "💡 To initialize Vault, run: vault operator init"
