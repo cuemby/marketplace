@@ -6,9 +6,9 @@ set -e
 # ===========================================
 DATABASE="{{database}}"          # "internal" to install local MySQL, "external" to use another server
 
-DB_NAME="{{db_name}}"
-DB_USER="{{db_user}}"
-DB_PASSWORD="{{db_password}}"
+DB_NAME="{{db_name}}" # Name of the database
+DB_USER="{{db_user}}"      # User for the database
+DB_PASSWORD="{{db_password}}" # Password for the database user
 
 # If DATABASE="external", configure host and port here
 DB_HOST="{{db_host}}" # Leave empty if not using an external database
