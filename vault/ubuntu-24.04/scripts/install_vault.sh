@@ -9,6 +9,8 @@ VAULT_USER="vault"
 VAULT_GROUP="vault"
 VAULT_DATA_DIR="/opt/vault/data"
 VAULT_CONFIG_DIR="/etc/vault.d"
+TOKEN_FILE="/root/vault_init.txt"
+ROOT_TOKEN=""
 
 log() {
   echo -e "\033[1;32m[INFO]\033[0m $1"
@@ -21,20 +23,38 @@ error() {
 trap 'error "Something went wrong. Aborting."' ERR
 
 # ========================
+# PARSE CLI ARGUMENTS
+# ========================
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --root-token)
+      ROOT_TOKEN="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "$ROOT_TOKEN" ]]; then
+  error "You must pass --root-token <token>"
+fi
+
+# ========================
 # DEPENDENCIES
 # ========================
 log "📦 Installing required dependencies..."
 apt-get update
-apt-get install -y curl gpg apt-transport-https software-properties-common unzip
+apt-get install -y curl gpg apt-transport-https software-properties-common unzip jq
 
 # ========================
-# HASHICORP REPOSITORY
+# HASHICORP REPO
 # ========================
 log "🔐 Adding HashiCorp repository..."
 curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor > /usr/share/keyrings/hashicorp-archive-keyring.gpg
-
 echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" > /etc/apt/sources.list.d/hashicorp.list
-
 apt-get update
 
 # ========================
@@ -81,10 +101,9 @@ chmod 640 "$VAULT_CONFIG_DIR/vault.hcl"
 log "🛠 Configuring systemd service..."
 cat > /etc/systemd/system/vault.service <<EOF
 [Unit]
-Description=HashiCorp Vault - A tool for managing secrets
-Documentation=https://www.vaultproject.io/docs/
-Requires=network-online.target
+Description=HashiCorp Vault
 After=network-online.target
+Requires=network-online.target
 
 [Service]
 User=$VAULT_USER
@@ -104,19 +123,55 @@ EOF
 # ========================
 log "🔄 Reloading systemd..."
 systemctl daemon-reload
-
-log "🚀 Enabling Vault on startup..."
+log "🚀 Enabling Vault..."
 systemctl enable vault
-
 log "▶️ Starting Vault..."
 systemctl start vault
+
+# Wait for vault to be up
+sleep 5
 
 # ========================
 # EXPORT VAULT_ADDR
 # ========================
-echo 'export VAULT_ADDR="http://127.0.0.1:8200"' >> /etc/profile.d/vault.sh
-chmod +x /etc/profile.d/vault.sh
+export VAULT_ADDR="http://127.0.0.1:8200"
+log "🌐 VAULT_ADDR=$VAULT_ADDR"
 
-log "✅ Vault has been installed and configured successfully."
-log "🌐 You can check the status with: systemctl status vault"
-log "💡 To initialize Vault, run: vault operator init"
+# ========================
+# INITIALIZE VAULT
+# ========================
+log "🔑 Initializing Vault..."
+INIT_OUTPUT=$(vault operator init -format=json)
+
+# Save keys to file
+echo "$INIT_OUTPUT" > "$TOKEN_FILE"
+chmod 600 "$TOKEN_FILE"
+log "💾 Initialization keys saved to $TOKEN_FILE"
+
+# Parse keys
+UNSEAL_KEY_1=$(echo "$INIT_OUTPUT" | jq -r '.unseal_keys_b64[0]')
+
+# ========================
+# UNSEAL VAULT
+# ========================
+log "🔓 Unsealing Vault with required keys..."
+for i in 0 1 2; do
+  KEY=$(echo "$INIT_OUTPUT" | jq -r ".unseal_keys_b64[$i]")
+  vault operator unseal "$KEY"
+done
+
+# ========================
+# LOGIN WITH INITIAL ROOT TOKEN
+# ========================
+INIT_ROOT_TOKEN=$(echo "$INIT_OUTPUT" | jq -r '.root_token')
+export VAULT_TOKEN="$INIT_ROOT_TOKEN"
+
+# ========================
+# CREATE CUSTOM ROOT TOKEN
+# ========================
+log "🪪 Creating user-specified root token..."
+vault token create -id="$ROOT_TOKEN" -policy="root"
+
+log "✅ Vault installed, initialized, and unsealed."
+log "🔐 Custom root token: $ROOT_TOKEN"
+log "💾 Unseal key stored in: $TOKEN_FILE"
