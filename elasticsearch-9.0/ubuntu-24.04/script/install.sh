@@ -63,6 +63,7 @@ if [ ! -f /etc/apt/keyrings/docker.gpg ]; then
 else
   echo "The Docker GPG key already exists, it will not be downloaded again."
 fi
+
 # Set up the Docker repository for Ubuntu Jammy
 echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
@@ -73,7 +74,7 @@ sudo apt-get update
 sudo apt-get install --yes docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
 # Ensure current user can use Docker without sudo
-sudo usermod -aG docker $(whoami)
+sudo usermod -aG docker "$(whoami)"
 sudo systemctl enable --now docker
 
 # Create installation directory
@@ -133,11 +134,11 @@ echo "docker-compose.yaml file created at $INSTALL_DIR"
 
 # Start Elasticsearch
 echo "Starting Elasticsearch..."
-docker compose up -d elasticsearch
+sudo docker compose up -d elasticsearch
 
 # Wait for Elasticsearch to be ready
 echo "Waiting for Elasticsearch to respond..."
-until curl -s -u elastic:${ELASTICSEARCH_PASSWORD} http://localhost:${ELASTICSEARCH_HTTP_PORT} >/dev/null; do
+until sudo curl -s -u elastic:${ELASTICSEARCH_PASSWORD} http://localhost:${ELASTICSEARCH_HTTP_PORT} >/dev/null; do
     echo "Waiting for Elasticsearch to start..."
     sleep 5
 done
@@ -146,7 +147,7 @@ echo "Elasticsearch is ready"
 
 # Set password for kibana_system
 echo "Setting password for kibana_system..."
-docker compose exec -T elasticsearch \
+sudo docker compose exec -T elasticsearch \
   curl -X POST -u elastic:${ELASTICSEARCH_PASSWORD} \
   -H "Content-Type: application/json" \
   -d "{\"password\":\"${KIBANA_PASSWORD}\"}" \
@@ -154,7 +155,7 @@ docker compose exec -T elasticsearch \
 
 # Start Kibana
 echo "Starting Kibana..."
-docker compose up -d kibana
+sudo docker compose up -d kibana
 
 # Wait for Kibana to be ready
 KIBANA_RETRIES=0
@@ -171,7 +172,7 @@ done
 
 if [ $KIBANA_RETRIES -eq 15 ]; then
     echo "⚠️ Kibana did not respond after several attempts. Check logs:"
-    docker compose logs --tail=50 kibana
+    sudo docker compose logs --tail=50 kibana
 fi
 
 # Create systemd service
