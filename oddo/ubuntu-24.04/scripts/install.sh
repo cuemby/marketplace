@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ========================
-# CONFIGURACIÓN
+# CONFIGURATION
 # ========================
 POSTGRES_PASSWORD=""
 POSTGRES_USER="odoo"
@@ -42,20 +42,20 @@ if ! command -v docker &> /dev/null; then
   sudo systemctl enable --now docker
 fi
 
-log "🧹 Deteniendo y eliminando contenedores antiguos si existen..."
+log "🧹 Stopping and removing old containers if already exist..."
 sudo docker stop odoo || true
 sudo docker stop odoo-db || true
 sudo docker rm odoo || true
 sudo docker rm odoo-db || true
 
-log "🧹 Eliminando volúmenes antiguos si existen..."
+log "🧹 Removing old volumes if already exist..."
 sudo docker volume rm odoo_data || true
 sudo docker volume rm odoo_pgdata || true
 
-log "🌐 Creando red Docker dedicada (si no existe)..."
+log "🌐 Creating a new network for our Odoo instance(if not exist)..."
 sudo docker network create odoo-net || true
 
-log "🐘 Iniciando contenedor de PostgreSQL..."
+log "🐘 Starting container for the PostgreSQL database..."
 sudo docker run -d \
   --name odoo-db \
   --network odoo-net \
@@ -65,10 +65,10 @@ sudo docker run -d \
   -v odoo_pgdata:/var/lib/postgresql/data \
   postgres:15
 
-log "⏳ Esperando que PostgreSQL inicie..."
+log "⏳ Waiting for PostgreSQL container to be ready..."
 sleep 10
 
-log "📦 Iniciando contenedor de Odoo..."
+log "📦 Starting container for Odoo..."
 sudo docker run -d \
   --name odoo \
   --network odoo-net \
@@ -79,13 +79,12 @@ sudo docker run -d \
   -e PASSWORD="$POSTGRES_PASSWORD" \
   odoo:17.0
 
-log "✅ Instalación completada."
+log "✅ Installation completed."
 echo
-echo "🌍 Accede a tu Odoo en:"
+echo "🌍 To access Odoo, visit:"
 echo
 echo "   http://$(curl -s ifconfig.me):${ODOO_PORT}"
 echo
-echo "ℹ️ Usuario de la base de datos: $POSTGRES_USER"
-echo "ℹ️ Contraseña de la base de datos: $POSTGRES_PASSWORD"
+echo "ℹ️ Username for PostgreSQL container: $POSTGRES_USER"
 echo
 log "📋 Usa 'sudo docker logs -f odoo' para monitorear el inicio."
