@@ -9,7 +9,7 @@ KEYCLOAK_URL="https://github.com/keycloak/keycloak/releases/download/${KEYCLOAK_
 KEYCLOAK_DIR="/opt/keycloak"
 ADMIN_USER=""
 ADMIN_PASSWORD=""
-PUBLIC_IP=$(curl -s ifconfig.me)
+PUBLIC_IP=$(curl -s ifconfig.me || hostname -I | awk '{print $1}')
 log() { echo -e "\033[1;32m[INFO]\033[0m $1"; }
 error() { echo -e "\033[1;31m[ERROR]\033[0m $1"; exit 1; }
 trap 'error "Something went wrong. Aborting."' ERR
