@@ -94,7 +94,7 @@ fi
 
 # Update packages
 echo "Updating the system..."
-sudo apt update && sudo apt upgrade -y
+sudo apt update
 
 # Install Apache, PHP, and dependencies
 echo "Installing Apache, PHP, and dependencies..."
